@@ -6,10 +6,8 @@ import json
 from socketio import server
 
 ship_ev3 = object()
-
 EtoE_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-
+server_connection = object()
 ship_queue = []
 
 class shippment_ev3_connection(threading.Thread):
@@ -20,6 +18,7 @@ class shippment_ev3_connection(threading.Thread):
         self.server_socket.bind(("", self.port_num))
         self.client_socket = object()
         self.connection = 0
+        self.color_ack = ''
         print("init done")
     
     def run(self):
@@ -28,14 +27,31 @@ class shippment_ev3_connection(threading.Thread):
         self.client_socket, self.address = self.server_socket.accept()
         self.connection = 1
         print ("Got a connection from", self.address)
+        while 1:
+            self.wait_request()
     
-    def wait_ack(self):
+    def wait_request(self):
+        global server_connection
         ret = self.client_socket.recv(512).decode()
+        ret = json.loads(ret)
+        if ret['type'] == "sensor":
+            server_connection.log_message(ret)
+        elif ret['type'] == "request":
+            while 1:
+                print("ERROR:double ack from ev3")
+                if self.color_ack == '':
+                    break
+            self.color_ack = ret['data']
+        else:
+            raise TypeError
         return ret
 
     def ship(self, data):
         if self.connection == 1:
-            self.client_socket.send(data.encode())
+            print("edge->cloud : requesting shipping complete update: " + str(data))
+            data_to_server = {'type':'request', 'data': data}
+            data_to_server = json.dumps(data_to_server)
+            self.client_socket.send(data_to_server.encode())
             return True
         else:
             return False
@@ -83,7 +99,10 @@ class connect_to_server(threading.Thread):
             if ship_ev3.ship('1') == False:
                 print("Connecion ERROR")
 
-            color = ship_ev3.wait_ack()
+            color = ''
+            while 1:
+                if not ship_ev3.color_ack == '':
+                    color = ship_ev3.color_ack
             dest = None
 
             for item_data in ship_queue:
@@ -116,6 +135,12 @@ class connect_to_server(threading.Thread):
         data_to_server = json.dumps(data_to_server)
         self.client_socket.send(data_to_server.encode())
 
+    def log_message(self, data):
+        print("edge->cloud : log " + str(data))
+        data_to_server = {'type':'sensor', 'data': data}
+        data_to_server = json.dumps(data_to_server)
+        self.client_socket.send(data_to_server.encode())
+
 def init():
     # connection to ev3
     global ship_ev3
@@ -123,6 +148,7 @@ def init():
     ship_ev3.start()
 
 	# connection to cloud
+    global server_connection
     server_connectioon = connect_to_server(27002)
     server_connectioon.start()
 
@@ -133,11 +159,6 @@ def init():
 
     ship_ev3.join()
     server_connectioon.join()
-
-    # while 1:
-    #     sensor_db = ship_ev3.wait_ack()
-    #     # data reprocess
-    #     server_connectioon.message_sensor(sensor_db)
 
 # sio.emit('update_sensor_db', [{'time_stamp': 1, 'ev3_id': 'shipment', 'sensor_type':'color', 'value':0xFF0000}]) 
 

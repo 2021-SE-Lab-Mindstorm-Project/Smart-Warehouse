@@ -3,6 +3,8 @@ import threading
 import time
 import json
 
+from socketio import server
+
 MAX_CAP = {'red':10, 'yellow':10, 'white':10}
 
 # current storage status 
@@ -11,6 +13,7 @@ storing = {'red':0, 'yellow':0, 'white':0}
 # accumulate updated item from ev3
 item_update = {'red':0, 'yellow':0, 'white':0}
 
+server_connection = object()
 EtoE_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 lock = threading.Lock()
 
@@ -36,23 +39,37 @@ class edge_to_ev3(threading.Thread):
 		
 	def ev3comm(self):
 		# communicate with ev3, update "storing" & "item_update" variable
+		global server_connection
 		global item_update
 		global storing
-		lego = self.client_socket.recv(512).decode()
+		lego = self.wait_command()
+		if lego['type'] == "sensor":
+			server_connection.log_message(lego)
+		elif lego['type'] == "request":
+			if (MAX_CAP[lego] > storing[lego]):
+				print("capacity available for color " + lego)
+				lock.acquire()
+				item_update[lego] += 1
+				lock.release()
+				self.message("True")
+				EtoE_sock.send(lego.encode())
+			else:
+				print("not enough room")
+				self.message("False")
 
-		if (MAX_CAP[lego] > storing[lego]):
-			print("capacity available for color " + lego)
-			lock.acquire()
-			item_update[lego] += 1
-			lock.release()
-			self.message("True")
-			EtoE_sock.send(lego.encode())
-		else:
-			print("not enough room")
-			self.message("False")
+	def wait_command(self):
+		ret = self.client_socket.recv(512).decode()
+		ret = json.loads(ret)
+		return ret
 
 	def message(self, data):
-		self.client_socket.send(data.encode())
+		print("edge->cloud : requesting storage status update: " + str(data))
+		data_to_server = {'type':'request', 'data': data}
+		data_to_server = json.dumps(data_to_server)
+		self.client_socket.send(data_to_server.encode())
+
+	# def message(self, data):
+	# 	self.client_socket.send(data.encode())
 
 	def disconnect(self):
 		# ASSERT(self.connection == 1)
@@ -95,6 +112,12 @@ class connect_to_server(threading.Thread):
 		data_to_server = json.dumps(data_to_server)
 		self.client_socket.send(data_to_server.encode())
 
+	def log_message(self, data):
+		print("edge->cloud : log " + str(data))
+		data_to_server = {'type':'sensor', 'data': data}
+		data_to_server = json.dumps(data_to_server)
+		self.client_socket.send(data_to_server.encode())
+
 def setInterval(interval, times = -1):
     # This will be the actual decorator,
     # with fixed interval and times parameter
@@ -129,6 +152,7 @@ def init():
 	ev3_connection.start()
 
 	# connection to cloud
+	global server_connectioon
 	server_connectioon = connect_to_server(27000)
 	server_connectioon.start()
 
