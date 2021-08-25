@@ -13,6 +13,7 @@ SHIP_MAX_CAP = 10
 ship_storage = 0
 shipping_queue = []
 lock = threading.Lock()
+server_connection = object()
 
 class storage_ev3_connection(threading.Thread):
     def __init__(self, port_num=5000):
@@ -21,6 +22,7 @@ class storage_ev3_connection(threading.Thread):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind(("", self.port_num))
         self.client_socket = object()
+        self.ack = 0
         self.connection = 0
         print("init done")
     
@@ -30,14 +32,32 @@ class storage_ev3_connection(threading.Thread):
         self.client_socket, self.address = self.server_socket.accept()
         self.connection = 1
         print ("I got a connection from ", self.address)
+        while 1 :
+            self.wait_request()
     
-    def wait_ack(self):
+    def wait_request(self):
+        global server_connection
         ret = self.client_socket.recv(512).decode()
+        ret = json.loads(ret)
+        if ret['type'] == "sensor":
+            server_connection.log_message(ret)
+        elif ret['type'] == "request":
+            while 1:
+                print("ERROR:double ack from ev3")
+                if self.ack == 0:
+                    break
+            self.ack = 1
+        else:
+            raise TypeError
         return ret
+		
 
     def order(self, data):
         if self.connection == 1:
-            self.client_socket.send(data.encode())
+            print("edge->cloud : requesting shipping storage status update: " + str(data))
+            data_to_server = {'type':'request', 'data': data}
+            data_to_server = json.dumps(data_to_server)
+            self.client_socket.send(data_to_server.encode())
             return True
         else:
             return False
@@ -127,15 +147,17 @@ class connect_to_server(threading.Thread):
     def run(self):
         self.client_socket.connect(("169.56.76.12", self.port_num))
         self.connection = 1
+        global server_connection
         print ("connected to server")
         while 1:
-            data = self.wait_command()
-            self.req_release(data)
+            lego = self.wait_command()
+            self.req_release(lego)
             time.sleep(0.1)
 
     def req_release(self, data):
         global ship_storage
         global storing
+        global storage_ev3
         global lock
         print('Cloud->edge: release request ' + str(data))
 
@@ -167,7 +189,10 @@ class connect_to_server(threading.Thread):
                 shipping_queue.remove(req)
                 shipped.append(req)
                 storage_ev3[color].order('True')
-                storage_ev3[color].wait_ack()
+                while 1:
+                    if storage_ev3[color].ack == 1:
+                        storage_ev3[color].ack =0
+                        break
                 edges[0].notice(req)
                 # lock.acquire()
                 ship_storage +=1
@@ -193,9 +218,14 @@ class connect_to_server(threading.Thread):
         data_to_server = json.dumps(data_to_server)
         self.client_socket.send(data_to_server.encode())
 
+    def log_message(self, data):
+        print("edge->cloud : log " + str(data))
+        data_to_server = {'type':'sensor', 'data': data}
+        data_to_server = json.dumps(data_to_server)
+        self.client_socket.send(data_to_server.encode())
 
 def init():
-    global ship_storage
+    global server_connection
     # connect to cloud
     server_connection = connect_to_server(27001)
     server_connection.start()
@@ -203,6 +233,7 @@ def init():
     # sio.connect('http://169.56.76.12:'+target_port)
 
     # open server for 3 storage ev3
+    global storage_ev3
     for i in range(3):
         new_storage = storage_ev3_connection(5000+i)
         new_storage.start()
