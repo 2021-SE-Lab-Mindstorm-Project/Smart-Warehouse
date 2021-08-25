@@ -42,6 +42,18 @@ MongoDB is used for the implementation.
 |stored|boolean|True, False|
 |wear_time|timestamp| |
 
+To access DB with GUI
+1. Download `MongoDB Compass` from <https://www.mongodb.com/try/download/compass> and install
+2. Select `Fill in connection fields individually`
+3. In `Hostname` tab,
+    * Hostname : localhost
+    * Port : 27018 
+4. In `More Options` tab,
+    * SSH Tunnel : Use Password 
+    * SSH Hostname : 169.56.76.12
+    * SSH Tunnel Port : 22
+    * SSH Username : teamleader
+    * SSH Password : &lt;password&gt;
 
 
 ## Web Server
