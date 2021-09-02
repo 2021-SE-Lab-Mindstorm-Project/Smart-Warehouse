@@ -1,0 +1,16 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<form action="/orders">
+    <br><br>
+    <h1 claass="w3-container">Orders proceeding</h1>
+    <div>
+        <ul class="w3-ul">
+            {% for order in orders %}
+            <li class="{{order.tag_color}}">Color : {{ order.color }} / Destination : {{ order.dest }} / Status : {{
+                order.status }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endblock %}

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Warehouse Web Managment</title>
+    <link href="{{ url_for('static', filename='css/w3.css') }}" rel="stylesheet">
+</head>
+<body>
+<header>
+    <div class="w3-bar w3-green">
+        <a class="w3-bar-item w3-button w3-mobile" href="/">Home</a>
+        <a class="w3-bar-item w3-button w3-mobile" href="stocks">Stocks</a>
+        <a class="w3-bar-item w3-button w3-mobile" href="orders">Order List</a>
+    </div>
+    <hr>
+</header>
+<main role="main">
+    <!-- Main content block -->
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

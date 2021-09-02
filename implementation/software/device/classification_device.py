@@ -1,12 +1,12 @@
 #!/usr/bin/env pybricks-micropython
-
-from pybricks.ev3devices import Motor, ColorSensor, UltrasonicSensor
-from pybricks import ev3brick
-from pybricks.parameters import Port, Stop, Direction
-from pybricks.tools import wait
-from threading import Thread
+import json
 import socket
 import time
+from threading import Thread
+
+from pybricks.ev3devices import Motor, ColorSensor, UltrasonicSensor
+from pybricks.parameters import Port, Stop, Direction
+from pybricks.tools import wait
 
 # Initialize the motors.
 belt_motor = Motor(Port.D, Direction.COUNTERCLOCKWISE)
@@ -32,9 +32,14 @@ BELT_MOTOR_SPEED = 180
 DISTANCE_SENSOR_DISTANCE = 0
 COLOR_SENSOR_COLOR = None
 
+settings_file = open("../../settings.json")
+settings_data = json.load(settings_file)
+settings_file.close()
+
 if use_socket:
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(("143.248.41.212", 5000))
+    client_socket.connect(
+        (settings_data['classification_edge']['address'], settings_data['classification_edge']['service_port']))
 
 catch_motor.reset_angle(0)
 
@@ -43,8 +48,10 @@ car_at_start = True
 object_list = []
 object_color = None
 
+
 def run_belt():
     belt_motor.run(BELT_MOTOR_SPEED)
+
 
 def watch_object():
     object_buffer = []
@@ -53,7 +60,7 @@ def watch_object():
 
     def not_in_list():
         cond1 = (len(object_list) == 0)
-        cond2 = ((len(object_list) > 0) and (time.time()-object_list[-1] > 1.5))
+        cond2 = ((len(object_list) > 0) and (time.time() - object_list[-1] > 1.5))
 
         return cond1 or cond2
 
@@ -70,19 +77,19 @@ def watch_object():
 
             if wait_for_belt == True:
                 print("two object now..")
-                object_list = [time.time()-5]*2
-                
+                object_list = [time.time() - 5] * 2
+
             wait_for_belt = False
 
         elif (30 < DISTANCE_SENSOR_DISTANCE < 52) and not_in_list() and (wait_for_belt == False):
             if len(object_buffer) < 30:
                 if len(object_buffer) > 0:
-                    if time.time()-object_buffer[0] > 0.5:
+                    if time.time() - object_buffer[0] > 0.5:
                         object_buffer = []
 
                 object_buffer.append(time.time())
                 continue
-            
+
             object_buffer = []
             object_list.append(time.time())
 
@@ -102,23 +109,23 @@ def catch_object():
 
             if (time.time() - saw_time) < 1.0:  # new item
                 continue
-            else:                               # waiting item
+            else:  # waiting item
                 wait(500)
-            
+
             print("catching object..")
             print("object_count :", len(object_list))
             print()
 
             del object_list[0]
-                
+
             catch_motor.run_angle(200, -25, Stop.COAST, True)
-            
+
             wait(1000)
             while car_at_start == False:
                 wait(50)
 
             catch_motor.run_angle(200, 25, Stop.COAST, True)
-            
+
 
 def watch_color():
     global object_color
@@ -146,6 +153,7 @@ def watch_color():
 
         wait(10)
 
+
 def divide_object():
     global object_color
     global car_at_start
@@ -172,16 +180,16 @@ def divide_object():
                 client_socket.send(color_encode)
                 ack = client_socket.recv(512).decode()
                 if (ack == 'True'):
-                    print("storage available..")
+                    print("repository available..")
                     print()
                     break
                 else:
-                    print("storage full..")
+                    print("repository full..")
                     time.sleep(1)
 
-        if object_color == YELLOW: # right direction
+        if object_color == YELLOW:  # right direction
             divide_motor.run_angle(200, 455, Stop.COAST, True)
-        elif object_color == RED: # left direction
+        elif object_color == RED:  # left direction
             divide_motor.run_angle(200, -465, Stop.COAST, True)
         else:
             pass
@@ -208,7 +216,7 @@ def divide_object():
 #     last_sent_time = time.time()-10
 #     log_delay_time = 1
 #     log_data = {'type': 'sensor', 'data': []}
-    
+
 #     while True:
 #         time.sleep(log_delay_time)
 
@@ -255,30 +263,30 @@ def divide_object():
 #         }
 
 #         log_data['data'].extend([belt_motor_log, catch_motor_log, wheel_motor_log, divide_motor_log, color_sensor_log, distance_sensor_log])
-        
+
 #         time.sleep(log_delay_time)
 
 #         if time.time() - last_sent_time > 10:
 #             client_socket.send(log_data)
 
 
-t1 = Thread(target = run_belt)
+t1 = Thread(target=run_belt)
 t1.start()
 
-t2 = Thread(target = watch_object)
+t2 = Thread(target=watch_object)
 t2.start()
 
-t3 = Thread(target = catch_object)
+t3 = Thread(target=catch_object)
 t3.start()
 
-t4 = Thread(target = watch_color)
+t4 = Thread(target=watch_color)
 t4.start()
 
-t5 = Thread(target = divide_object)
+t5 = Thread(target=divide_object)
 t5.start()
 
 # t6 = Thread(target = send_log)
 # t6.start()
-    
+
 while True:
     pass

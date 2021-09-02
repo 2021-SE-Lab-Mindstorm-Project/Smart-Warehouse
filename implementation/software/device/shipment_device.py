@@ -1,12 +1,12 @@
 #!/usr/bin/env pybricks-micropython
-
-from pybricks.ev3devices import Motor, ColorSensor, UltrasonicSensor
-from pybricks import ev3brick
-from pybricks.parameters import Port, Stop, Direction
-from pybricks.tools import wait
-from threading import Thread
+import json
 import socket
 import time
+from threading import Thread
+
+from pybricks.ev3devices import Motor, ColorSensor, UltrasonicSensor
+from pybricks.parameters import Port, Stop, Direction
+from pybricks.tools import wait
 
 # Initialize the motors.
 belt_motor = Motor(Port.D, Direction.COUNTERCLOCKWISE)
@@ -27,9 +27,13 @@ WHITE = 'Color.WHITE'
 # Initialize the socket
 use_socket = True
 
+settings_file = open("../../settings.json")
+settings_data = json.load(settings_file)
+settings_file.close()
+
 if use_socket:
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(("143.248.41.214", 5000))
+    client_socket.connect((settings_data['shipment_edge']['address'], settings_data['shipment_edge']['service_port']))
 
 catch_motor.reset_angle(0)
 
@@ -37,6 +41,7 @@ car_at_start = True
 
 object_list = []
 object_color = None
+
 
 def run_belt():
     belt_motor.run(180)
@@ -48,7 +53,7 @@ def watch_object():
 
     def not_in_list():
         cond1 = (len(object_list) == 0)
-        cond2 = ((len(object_list) > 0) and (time.time()-object_list[-1] > 1.5))
+        cond2 = ((len(object_list) > 0) and (time.time() - object_list[-1] > 1.5))
 
         return cond1 or cond2
 
@@ -65,19 +70,19 @@ def watch_object():
 
             if wait_for_belt == True:
                 print("two object now..")
-                object_list = [time.time()-5]*2
-                
+                object_list = [time.time() - 5] * 2
+
             wait_for_belt = False
 
         elif (30 < distance < 52) and not_in_list() and (wait_for_belt == False):
             if len(object_buffer) < 30:
                 if len(object_buffer) > 0:
-                    if time.time()-object_buffer[0] > 0.5:
+                    if time.time() - object_buffer[0] > 0.5:
                         object_buffer = []
 
                 object_buffer.append(time.time())
                 continue
-            
+
             object_buffer = []
             object_list.append(time.time())
 
@@ -97,23 +102,23 @@ def catch_object():
 
             if (time.time() - saw_time) < 1.0:  # new item
                 continue
-            else:                               # waiting item
+            else:  # waiting item
                 wait(500)
-            
+
             print("catching object..")
             print("object_count :", len(object_list))
             print()
 
             del object_list[0]
-                
+
             catch_motor.run_angle(200, -25, Stop.COAST, True)
-            
+
             wait(1000)
             while car_at_start == False:
                 wait(50)
 
             catch_motor.run_angle(200, 25, Stop.COAST, True)
-            
+
 
 def watch_color():
     global object_color
@@ -169,13 +174,12 @@ def divide_object():
             else:
                 dest = 3
 
-        if dest == 1: # left direction
+        if dest == 1:  # left direction
             divide_motor.run_angle(200, -455, Stop.COAST, True)
-        elif dest == 2: # middle direction
+        elif dest == 2:  # middle direction
             pass
-        else: # right direction
+        else:  # right direction
             divide_motor.run_angle(200, 455, Stop.COAST, True)
-        
 
         wheel_motor.run_angle(250, 500, Stop.COAST, True)
         wait(100)
@@ -191,20 +195,20 @@ def divide_object():
         object_color = None
 
 
-t1 = Thread(target = run_belt)
+t1 = Thread(target=run_belt)
 t1.start()
 
-t2 = Thread(target = watch_object)
+t2 = Thread(target=watch_object)
 t2.start()
 
-t3 = Thread(target = catch_object)
+t3 = Thread(target=catch_object)
 t3.start()
 
-t4 = Thread(target = watch_color)
+t4 = Thread(target=watch_color)
 t4.start()
 
-t5 = Thread(target = divide_object)
+t5 = Thread(target=divide_object)
 t5.start()
-    
+
 while True:
     pass

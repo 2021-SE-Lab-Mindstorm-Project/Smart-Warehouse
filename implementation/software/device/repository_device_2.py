@@ -1,16 +1,17 @@
 #!/usr/bin/env pybricks-micropython
-
-from pybricks.ev3devices import Motor, ColorSensor, UltrasonicSensor
-from pybricks import ev3brick
-from pybricks.parameters import Port, Stop, Direction
-from pybricks.tools import wait
-from threading import Thread
+import json
 import socket
 import time
+from threading import Thread
+
+from pybricks.ev3devices import Motor, ColorSensor
+from pybricks.parameters import Port, Stop, Direction
+from pybricks.tools import wait
 
 # Initialize the motors.
-belt_motor = Motor(Port.D, Direction.CLOCKWISE)
+belt_motor = Motor(Port.D, Direction.COUNTERCLOCKWISE)
 catch_motor = Motor(Port.C, Direction.CLOCKWISE)
+combine_motor = Motor(Port.A, Direction.CLOCKWISE)
 
 # Initialize the sensor.
 color_sensor = ColorSensor(Port.S1)
@@ -24,20 +25,27 @@ WHITE = 'Color.WHITE'
 # Initialize the socket.
 use_socket = True
 
+settings_file = open("../../settings.json")
+settings_data = json.load(settings_file)
+settings_file.close()
+
 if use_socket:
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(("143.248.41.213", 5001))
+    client_socket.connect(
+        (settings_data['repository_edge']['address'], settings_data['repository_edge']['service_port_2']))
 
 catch_motor.reset_angle(0)
 
 saw_object = False
 object_list = []
+run_combine_belt = None
+
 
 def run_belt():
     belt_motor.run(180)
 
-def watch_color():
 
+def watch_color():
     def check_same_stamp(object_buffer, time):
         if len(object_buffer) == 0:
             return False
@@ -65,17 +73,19 @@ def watch_color():
                 if (saw_black == False) and ((len(color_buffer)) < 20):
                     continue
 
-            if saw_black or (not check_same_stamp (object_list, time.time())):
+            if saw_black or (not check_same_stamp(object_list, time.time())):
                 object_list.append(time.time())
                 color_buffer = []
-                client_socket.send('white')
+                client_socket.send('red')
 
         elif str(color) == BLACK:
             saw_black = True
 
+
 def catch_object():
     global object_list
     global saw_object
+    global run_combine_belt
 
     while True:
         if len(object_list) > 0:
@@ -90,8 +100,8 @@ def catch_object():
             print("object_count :", len(object_list))
             print()
 
-            catch_motor.run_angle(200, -30, Stop.COAST, True)
-            
+            catch_motor.run_angle(200, -35, Stop.COAST, True)
+
             if use_socket:
                 client_socket.recv(512).decode()
             else:
@@ -99,22 +109,36 @@ def catch_object():
 
             print("releasing object..")
             print()
-            
-            catch_motor.run_angle(200, 30, Stop.COAST, True)
-            
+
+            catch_motor.run_angle(200, 35, Stop.COAST, True)
+            run_combine_belt = time.time()
+
             del object_list[0]
+
+
+def combine_object():
+    global run_combine_belt
+
+    while True:
+        if (run_combine_belt != None) and (time.time() - run_combine_belt > 0.4):
+            combine_motor.run_time(400, 3000)
+            run_combine_belt = None
 
             if use_socket:
                 client_socket.send('True')
 
-t1 = Thread(target = run_belt)
+
+t1 = Thread(target=run_belt)
 t1.start()
 
-t2 = Thread(target = watch_color)
+t2 = Thread(target=watch_color)
 t2.start()
 
-t3 = Thread(target = catch_object)
+t3 = Thread(target=catch_object)
 t3.start()
+
+t4 = Thread(target=combine_object)
+t4.start()
 
 while True:
     pass

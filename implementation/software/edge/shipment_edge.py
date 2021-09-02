@@ -1,17 +1,20 @@
-import socket
-import threading 
-import time
 import json
+import socket
+import threading
+import time
 
-from socketio import server
+settings_file = open("../../settings.json")
+settings_data = json.load(settings_file)
+settings_file.close()
 
-ship_ev3 = object()
+shipment_ev3 = object()
 EtoE_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_connection = object()
 ship_queue = []
 
+
 class shippment_ev3_connection(threading.Thread):
-    def __init__(self, port_num=5000):
+    def __init__(self, port_num=5007):
         super().__init__()
         self.port_num = port_num
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -20,16 +23,16 @@ class shippment_ev3_connection(threading.Thread):
         self.connection = 0
         self.color_ack = ''
         print("init done")
-    
+
     def run(self):
         self.server_socket.listen(5)
-        print ("port" + str(self.port_num) + " open & listening")
+        print("port" + str(self.port_num) + " open & listening")
         self.client_socket, self.address = self.server_socket.accept()
         self.connection = 1
-        print ("Got a connection from", self.address)
+        print("Got a connection from", self.address)
         while 1:
             self.wait_request()
-    
+
     def wait_request(self):
         global server_connection
         ret = self.client_socket.recv(512).decode()
@@ -49,7 +52,7 @@ class shippment_ev3_connection(threading.Thread):
     def ship(self, data):
         if self.connection == 1:
             print("edge->cloud : requesting shipping complete update: " + str(data))
-            data_to_server = {'type':'request', 'data': data}
+            data_to_server = {'type': 'request', 'data': data}
             data_to_server = json.dumps(data_to_server)
             self.client_socket.send(data_to_server.encode())
             return True
@@ -61,33 +64,33 @@ class shippment_ev3_connection(threading.Thread):
         self.client_socket.close()
         self.connection = 0
         self.server_socket.close()
-        print("socket to "+str(self.address)+"disconnected")
+        print("socket to " + str(self.address) + "disconnected")
         self.exit()
 
+
 class connect_to_server(threading.Thread):
-    def __init__(self, port_num=27000):
-	    super().__init__()
-	    self.port_num = port_num
-	    self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	    self.connection = 0
-	    print("init done")
+    def __init__(self, port_num=5002):
+        super().__init__()
+        self.port_num = port_num
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connection = 0
+        print("init done")
 
     def run(self):
-        self.client_socket.connect(("169.56.76.12", self.port_num))
+        self.client_socket.connect((settings_data['cloud']['address'], self.port_num))
         self.connection = 1
-        print ("connected to server")
+        print("connected to server")
         while 1:
             data = self.wait_command()
             self.req_shipment(data)
             time.sleep(10)
-    
 
     # cloud => shipment_edge
     def req_shipment(self, data):
-        global ship_ev3
+        global shipment_ev3
         global ship_queue
 
-        #data format : [{color: red, dest: 3} ... ]
+        # data format : [{color: red, dest: 3} ... ]
         print(f'received: {data}')
 
         ship_queue.extend(data)
@@ -96,13 +99,13 @@ class connect_to_server(threading.Thread):
             if len(ship_queue) == 0:
                 break
 
-            if ship_ev3.ship('1') == False:
+            if shipment_ev3.ship('1') == False:
                 print("Connecion ERROR")
 
             color = ''
             while 1:
-                if not ship_ev3.color_ack == '':
-                    color = ship_ev3.color_ack
+                if not shipment_ev3.color_ack == '':
+                    color = shipment_ev3.color_ack
             dest = None
 
             for item_data in ship_queue:
@@ -115,7 +118,7 @@ class connect_to_server(threading.Thread):
 
             if dest == None:
                 print("Color ERROR")
-            elif ship_ev3.ship(dest) == False:
+            elif shipment_ev3.ship(dest) == False:
                 print("Connection Error")
             else:
                 shipped.append({'color': color, 'dest': dest})
@@ -131,36 +134,37 @@ class connect_to_server(threading.Thread):
 
     def message(self, data):
         print("edge->cloud : requesting shipping update: " + str(data))
-        data_to_server = {'type':'request', 'data': data}
+        data_to_server = {'type': 'request', 'data': data}
         data_to_server = json.dumps(data_to_server)
         self.client_socket.send(data_to_server.encode())
 
     def log_message(self, data):
         print("edge->cloud : log " + str(data))
-        data_to_server = {'type':'sensor', 'data': data}
+        data_to_server = {'type': 'sensor', 'data': data}
         data_to_server = json.dumps(data_to_server)
         self.client_socket.send(data_to_server.encode())
 
+
 def init():
     # connection to ev3
-    global ship_ev3
-    ship_ev3 = shippment_ev3_connection(5000)
-    ship_ev3.start()
+    global shipment_ev3
+    shipment_ev3 = shippment_ev3_connection(settings_data['shipment_edge'])
+    shipment_ev3.start()
 
-	# connection to cloud
+    # connection to cloud
     global server_connection
-    server_connectioon = connect_to_server(27002)
+    server_connectioon = connect_to_server(settings_data['cloud']['service_port_shipment'])
     server_connectioon.start()
 
-    # sio.connect('http://169.56.76.12:'+target_port)
-	
-    # connect to storage edge server, check storage update
-    EtoE_sock.connect(("143.248.41.213", 5004))
+    # connect to repository edge server, check repository update
+    EtoE_sock.connect(
+        (settings_data['repository_edge']['address'], settings_data['repository_edge']['service_port_shipment']))
 
-    ship_ev3.join()
+    shipment_ev3.join()
     server_connectioon.join()
 
-# sio.emit('update_sensor_db', [{'time_stamp': 1, 'ev3_id': 'shipment', 'sensor_type':'color', 'value':0xFF0000}]) 
+
+# sio.emit('update_sensor_db', [{'time_stamp': 1, 'ev3_id': 'shipment', 'sensor_type':'color', 'value':0xFF0000}])
 
 if __name__ == '__main__':
     init()

@@ -1,0 +1,27 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<script> alert("{{messages[-1]}}") </script>
+{% endif %}
+{% endwith %}
+
+<form action="/json" method="post">
+    <select action="/" class="w3-select" method="GET" name=colours>
+        {% for colour in colours %}
+        <option SELECTED value="{{colour}}">{{colour}}</option>
+        "
+        {% endfor %}
+    </select>
+    <select action="/" class="w3-select" method="GET" name=dests>
+        {% for dest in dests %}
+        <option SELECTED value="{{dest}}">{{dest}}</option>
+        "
+        {% endfor %}
+    </select>
+    <br><br>
+    <input class="w3-button w3-teal" type="submit" value="Order">
+</form>
+{% endblock %}

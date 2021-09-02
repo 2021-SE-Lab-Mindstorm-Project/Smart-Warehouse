@@ -1,0 +1,64 @@
+{
+  "cloud": {
+    "address": "169.56.76.12",
+    "ssh_port": 22,
+    "ssh_user": "teamleader",
+    "db_address": "localhost",
+    "db_port": 27018,
+    "db_name": "database",
+    "db_repository_table_name": "repository",
+    "db_sensor_table_name": "sensor",
+    "db_order_table_name": "order",
+    "web_port": 80,
+    "service_port_classification": 5000,
+    "service_port_repository": 5001,
+    "service_port_shipment": 5002
+  },
+  "classification_edge": {
+    "address": "143.248.41.212",
+    "ssh_port": 222,
+    "ssh_user": "pi",
+    "service_port": 5003
+  },
+  "repository_edge": {
+    "address": "143.248.41.213",
+    "ssh_port": 222,
+    "ssh_user": "pi",
+    "service_port_device_0": 5004,
+    "service_port_device_1": 5005,
+    "service_port_device_2": 5006,
+    "service_port_classification": 5007,
+    "service_port_shipment": 5008
+  },
+  "shipment_edge": {
+    "address": "143.248.41.214",
+    "ssh_port": 222,
+    "ssh_user": "pi",
+    "service_port": 5009
+  },
+  "classification_device": {
+    "address": "143.248.47.47",
+    "ssh_port": 221,
+    "ssh_user": "robot"
+  },
+  "repository_device_0": {
+    "address": "143.248.47.47",
+    "ssh_port": 222,
+    "ssh_user": "robot"
+  },
+  "repository_device_1": {
+    "address": "143.248.47.47",
+    "ssh_port": 223,
+    "ssh_user": "robot"
+  },
+  "repository_device_2": {
+    "address": "143.248.47.47",
+    "ssh_port": 224,
+    "ssh_user": "robot"
+  },
+  "shipment_device": {
+    "address": "143.248.47.47",
+    "ssh_port": 225,
+    "ssh_user": "robot"
+  }
+}
