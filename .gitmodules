@@ -1,15 +1,15 @@
-[submodule ".\\implementation\\software\\Smart-Warehouse-Cloud"]
-	path = .\\implementation\\software\\Smart-Warehouse-Cloud
+[submodule "implementation/software/Smart-Warehouse-Cloud"]
+	path = implementation/software/Smart-Warehouse-Cloud
 	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Cloud
-[submodule ".\\implementation\\software\\Smart-Warehouse-Machine"]
-	path = .\\implementation\\software\\Smart-Warehouse-Machine
-	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Machine
-[submodule ".\\implementation\\software\\Smart-Warehouse-Edge\\Smart-Warehouse-Edge-Classification"]
-	path = .\\implementation\\software\\Smart-Warehouse-Edge\\Smart-Warehouse-Edge-Classification
-	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Edge-Classification
-[submodule ".\\implementation\\software\\Smart-Warehouse-Edge\\Smart-Warehouse-Edge-Repository"]
-	path = .\\implementation\\software\\Smart-Warehouse-Edge\\Smart-Warehouse-Edge-Repository
-	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Edge-Repository
-[submodule ".\\implementation\\software\\Smart-Warehouse-Edge\\Smart-Warehouse-Edge-Shipment"]
-	path = .\\implementation\\software\\Smart-Warehouse-Edge\\Smart-Warehouse-Edge-Shipment
+[submodule "implementation/software/Smart-Warehouse-Edge/Smart-Warehouse-Edge-Shipment"]
+	path = implementation/software/Smart-Warehouse-Edge/Smart-Warehouse-Edge-Shipment
 	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Edge-Shipment
+[submodule "implementation/software/Smart-Warehouse-Edge/Smart-Warehouse-Edge-Classification"]
+	path = implementation/software/Smart-Warehouse-Edge/Smart-Warehouse-Edge-Classification
+	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Edge-Classification
+[submodule "implementation/software/Smart-Warehouse-Edge/Smart-Warehouse-Edge-Repository"]
+	path = implementation/software/Smart-Warehouse-Edge/Smart-Warehouse-Edge-Repository
+	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Edge-Repository
+[submodule "implementation/software/Smart-Warehouse-Machine"]
+	path = implementation/software/Smart-Warehouse-Machine
+	url = https://github.com/2021-SE-Lab-Mindstorm-Project/Smart-Warehouse-Machine
